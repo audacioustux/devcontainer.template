@@ -3,20 +3,30 @@
 }:
 
 let
-  pkgs = import <nixpkgs> { inherit system; };
+  # `--impure` is already required by the Dockerfile's `nix profile install`
+  # invocation, so `getFlake` on the checked-out tree needs no extra pin: it
+  # reads the same `flake.lock`-resolved inputs as `nix develop` would.
+  flake = builtins.getFlake (toString ../.);
 
-  # Fetch flake-compat (Standard Nix, no experimental features needed)
-  flakeCompat = fetchTarball "https://github.com/NixOS/flake-compat/archive/master.tar.gz";
+  # Reuse the flake's own pinned `nixpkgs` input rather than resolving
+  # `<nixpkgs>` from NIX_PATH.
+  #
+  # This is not a style preference. A single-user Nix install adds no channel
+  # and the Dockerfile sets no NIX_PATH, so `import <nixpkgs>` fails outright
+  # during the image build with "file 'nixpkgs' was not found in the Nix search
+  # path". Where a NIX_PATH does exist it is worse than the error, because the
+  # build then silently resolves a different nixpkgs than flake.lock pins.
+  pkgs = flake.inputs.nixpkgs.legacyPackages.${system};
 
-  # Load the flake
-  flake = (import flakeCompat { src = ../.; }).defaultNix;
-
-  # Read the explicit dependency list from flake.nix
+  # Read the explicit dependency list exported by flake.nix.
   allDeps = flake.containerDependencies.${system};
 in
-# Build the environment
 pkgs.buildEnv {
-  name = "dev-container-env";
+  # Must match the name used by `nix profile remove` in
+  # .devcontainer/Taskfile.yml's updateContent task. `nix profile remove` takes
+  # this buildEnv name, and a non-matching name makes it a silent no-op that
+  # leaves the baked entry in place for the following install to collide with.
+  name = "devcontainer";
   paths = allDeps;
   ignoreCollisions = true;
 }
