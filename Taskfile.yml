@@ -43,7 +43,13 @@ tasks:
     # error, so this must no-op rather than fail the whole postCreate.
     status:
       - '! test -f mise.toml || ! command -v mise'
-    cmd: mise install
+    # `trust` first: mise refuses to read a config it has not seen before, and
+    # a lifecycle hook cannot answer that prompt. Trusting the repo you just
+    # checked out is the same decision you made by opening it in a devcontainer.
+    # Idempotent, so it is safe on every re-run.
+    cmds:
+      - mise trust
+      - mise install
 
   # ── Background processes (OPTIONAL) ─────────────────────────────────────────
   pm2:up:

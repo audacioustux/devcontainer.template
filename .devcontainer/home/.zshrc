@@ -21,10 +21,14 @@ source $ZSH/oh-my-zsh.sh
 # resolving whatever was already on PATH, so `mise current` reports the pinned
 # version while the binary you actually run is a different one.
 #
-# --shims rather than a bare `mise activate zsh`, which is the usual advice and
-# does not work here. Bare activation adjusts PATH from a precmd hook, and in
-# this environment direnv and the Nix profile re-prepend their own entries on
-# every prompt, after mise. Measured with jq pinned to 1.7.1: bare activation
-# still resolved the Nix 1.8.1 even in an interactive shell, while --shims
-# resolved 1.7.1. Shims are a fixed directory, so nothing can reorder them away.
+# --shims rather than a bare `mise activate zsh`, which is the usual advice.
+# Measured in a real interactive shell with jq pinned to 1.7.1: after bare
+# activation the precmd hook is installed and PATH gains no tool directory at
+# all, so jq still resolved to 1.8.1 from the Nix profile. With --shims the
+# shim directory is on PATH from the moment it is evaluated, and jq resolved to
+# the pinned 1.7.1.
+#
+# If you hit this, check `mise trust` first. An untrusted mise.toml makes mise
+# refuse to parse it and report nothing usable, which looks exactly like a PATH
+# problem and is not one.
 (( $+commands[mise] )) && eval "$(mise activate zsh --shims)" || true
