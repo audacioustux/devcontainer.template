@@ -47,7 +47,7 @@
           # Prefer one toolchain source per language. If you use mise or rustup
           # to manage versions, do NOT also list the language here — two installs
           # on PATH is a debugging session nobody enjoys.
-          # nodejs_22
+          # nodejs_22       # also required by pm2, below
           # bun
           # deno
           # python313
@@ -67,12 +67,15 @@
           # redis
 
           # ── Background processes (uncomment as needed) ────────────────────
-          # nodejs_22       # required by pm2
-          # pm2             # process manager wired to ecosystem.config.js
-          # cloudflared     # tunnel; see .devcontainer/cloudflared.yml
+          # pm2 needs nodejs_22 above uncommented too.
+          # pm2
+          # cloudflared
 
           # ── Version management ───────────────────────────────────────────
-          # mise            # per-project tool versions from mise.toml
+          # mise reads mise.toml. Its shell activation in
+          # .devcontainer/home/.zshrc is already guarded on the binary, so
+          # uncommenting here is all that is needed.
+          # mise
 
           # Utilities
           curl
