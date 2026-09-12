@@ -44,11 +44,12 @@ tasks:
     status:
       - '! test -f mise.toml || ! command -v mise'
     # `trust` first: mise refuses to read a config it has not seen before, and
-    # a lifecycle hook cannot answer that prompt. Trusting the repo you just
-    # checked out is the same decision you made by opening it in a devcontainer.
-    # Idempotent, so it is safe on every re-run.
+    # a lifecycle hook has no terminal to confirm on. Trusting the repo you
+    # just checked out is the same decision you made by opening it in a
+    # devcontainer. `--yes` states that intent rather than relying on mise
+    # staying non-interactive here. Idempotent, so it is safe on every re-run.
     cmds:
-      - mise trust
+      - mise trust --yes
       - mise install
 
   # ── Background processes (OPTIONAL) ─────────────────────────────────────────

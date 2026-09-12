@@ -22,13 +22,15 @@ source $ZSH/oh-my-zsh.sh
 # version while the binary you actually run is a different one.
 #
 # --shims rather than a bare `mise activate zsh`, which is the usual advice.
-# Measured in a real interactive shell with jq pinned to 1.7.1: after bare
-# activation the precmd hook is installed and PATH gains no tool directory at
-# all, so jq still resolved to 1.8.1 from the Nix profile. With --shims the
-# shim directory is on PATH from the moment it is evaluated, and jq resolved to
-# the pinned 1.7.1.
+# Measured in an interactive shell with jq pinned to 1.7.1 and the config
+# trusted: bare activation does add its tool directory, but appends it behind
+# the Nix profile - the Nix jq sat at PATH position 37 and mise's install dir
+# at 90 - so the pinned tool loses and `jq --version` still reported 1.8.1.
+# With --shims the shim directory wins and it reported 1.7.1.
 #
-# If you hit this, check `mise trust` first. An untrusted mise.toml makes mise
-# refuse to parse it and report nothing usable, which looks exactly like a PATH
-# problem and is not one.
+# One trap if you are debugging this: an untrusted mise.toml makes mise refuse
+# to parse it, so no tool directory is added at all and the symptom looks
+# identical. Check `mise trust --show` from inside the directory - it reports
+# on the current directory, so running it from elsewhere answers about a
+# different path.
 (( $+commands[mise] )) && eval "$(mise activate zsh --shims)" || true
