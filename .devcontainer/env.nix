@@ -4,8 +4,14 @@
 
 let
   # `--impure` is already required by the Dockerfile's `nix profile install`
-  # invocation, so `getFlake` on the checked-out tree needs no extra pin: it
-  # reads the same `flake.lock`-resolved inputs as `nix develop` would.
+  # invocation, so `getFlake` here needs no extra pin: it reads the same
+  # `flake.lock`-resolved inputs as `nix develop` would.
+  #
+  # This works during the image build even though /tmp/build is not a git
+  # checkout — the Dockerfile COPYs only flake.nix, flake.lock and this file.
+  # `getFlake` on a plain path copies that directory into the store and
+  # evaluates it there; a working tree is not required. Verified by building
+  # from a non-git directory holding exactly those three files.
   flake = builtins.getFlake (toString ../.);
 
   # Reuse the flake's own pinned `nixpkgs` input rather than resolving
