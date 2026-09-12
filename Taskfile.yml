@@ -20,19 +20,55 @@ tasks:
     deps:
       - task: git:setup
       - task: shell:setup
+      - task: mise:setup
 
   dev:start:
     desc: "Bring up local sources and background processes"
     cmds:
       - task: git:submodules:update
-      # OPTIONAL: start long-running processes here (pm2, docker compose, a
-      # dev server). Keep them idempotent — postStart runs on every resume.
+      - task: pm2:up
 
   dev:clean:
     desc: "Reclaim disk space from build artifacts and stale worktrees"
     deps:
       - git:worktrees:prune
       # OPTIONAL: add language-specific cleanup, e.g. cargo:clean.
+
+  # ── Tool versions (OPTIONAL) ────────────────────────────────────────────────
+  mise:setup:
+    desc: "Install mise-managed tools"
+    # Both guards matter. Without mise.toml there is nothing to install;
+    # without the mise binary (it is commented out in flake.nix by default)
+    # the command would not exist. Either absence is the normal case, not an
+    # error, so this must no-op rather than fail the whole postCreate.
+    status:
+      - '! test -f mise.toml || ! command -v mise'
+    cmd: mise install
+
+  # ── Background processes (OPTIONAL) ─────────────────────────────────────────
+  pm2:up:
+    desc: "Start devcontainer background processes"
+    # Guarded the same way: no ecosystem.config.js or no pm2 means nothing to
+    # start. postStart runs on every resume, and `pm2 start` on an already
+    # running app is a no-op, so this is safe to repeat.
+    status:
+      - '! test -f ecosystem.config.js || ! command -v pm2'
+    cmd: pm2 start ecosystem.config.js
+
+  pm2:down:
+    desc: "Stop devcontainer background processes"
+    status:
+      - '! test -f ecosystem.config.js || ! command -v pm2'
+    cmd: pm2 delete ecosystem.config.js
+    ignore_error: true
+
+  pm2:status:
+    desc: "Show background process status and recent logs"
+    status:
+      - '! command -v pm2'
+    cmds:
+      - pm2 list
+      - pm2 logs --lines 20 --nostream
 
   # ── Shell ───────────────────────────────────────────────────────────────────
   shell:setup:

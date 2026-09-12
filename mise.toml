@@ -1,0 +1,17 @@
+# OPTIONAL — per-project tool versions, installed by `task mise:setup`.
+#
+# Use mise for things you want pinned per project and updated independently of
+# the Nix generation: language runtimes you switch often, and npm/pypi CLIs that
+# release faster than nixpkgs.
+#
+# Delete this file if flake.nix alone covers your tools. `mise:setup` no-ops
+# when it is absent, so nothing breaks either way.
+#
+# The one rule worth obeying: a tool listed here must NOT also be uncommented in
+# flake.nix. Both put a binary on PATH, the Nix profile wins or loses depending
+# on shell init order, and `which` disagreeing with the version you get is a
+# genuinely unpleasant afternoon.
+[tools]
+# bun = "latest"
+# node = "22"
+# python = "3.13"

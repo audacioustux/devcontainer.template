@@ -63,9 +63,13 @@
           # k9s
           # opentofu
           # awscli2
-          # cloudflared
           # postgresql
           # redis
+
+          # ── Background processes (uncomment as needed) ────────────────────
+          # nodejs_22       # required by pm2
+          # pm2             # process manager wired to ecosystem.config.js
+          # cloudflared     # tunnel; see .devcontainer/cloudflared.yml
 
           # ── Version management ───────────────────────────────────────────
           # mise            # per-project tool versions from mise.toml

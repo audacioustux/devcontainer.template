@@ -1,0 +1,24 @@
+# OPTIONAL — bootstrap ingress for a Cloudflare Tunnel run by ecosystem.config.js.
+#
+# Only used if you uncomment the tunnel app there. Harmless to leave otherwise.
+#
+# THE DASHBOARD IS AUTHORITATIVE, NOT THIS FILE.
+#
+# A remotely-managed tunnel applies remote pushes even when `--config` names a
+# local file: the connector's orchestrator calls its ingress update
+# unconditionally, and an empty remote ingress is replaced with defaults that
+# 503 everything. Enabling a dashboard feature can push exactly that and take
+# the tunnel down. Editing the rule below will not fix such an outage — fix it
+# in the dashboard's published application routes.
+#
+# The rule is still worth keeping: it is what the connector serves between
+# process start and the first remote push, so a restart is not a 503 window.
+# Keep it in sync with the dashboard by hand.
+#
+# No tunnel UUID and no hostname are pinned: the token identifies the tunnel,
+# and a single catch-all rule serves whatever hostname is routed to it. That is
+# what makes this file safe to commit.
+#
+# 2222 is the port used by the devcontainer `sshd` feature, not the default 22.
+ingress:
+  - service: ssh://localhost:2222

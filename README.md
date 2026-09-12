@@ -29,12 +29,16 @@ nix develop        # or: direnv allow
 ├── .devcontainer/
 │   ├── Dockerfile          # Image build: Nix, then the flake environment
 │   ├── devcontainer.json   # Features, VS Code settings, lifecycle hooks
-│   ├── env.nix             # flake-compat bridge used during the build
+│   ├── env.nix             # Bridges flake.nix into the image build
 │   ├── Taskfile.yml        # Lifecycle hook implementations
 │   ├── home/               # Files copied into $HOME on every create
-│   └── sshd/               # OPTIONAL sshd hardening
+│   ├── sshd/               # OPTIONAL sshd hardening
+│   └── cloudflared.yml     # OPTIONAL tunnel ingress
 ├── flake.nix               # Package list (the file you edit most)
 ├── Taskfile.yml            # Generic dev tasks, usable without a container
+├── ecosystem.config.js     # OPTIONAL background processes (PM2)
+├── mise.toml               # OPTIONAL per-project tool versions
+├── .env.example            # Copy to .env; loaded by the root Taskfile
 ├── .envrc                  # direnv: loads the flake environment
 └── .gitignore
 ```
@@ -49,16 +53,23 @@ nix develop        # or: direnv allow
 | Docker inside the container | `docker-in-docker` feature |
 | Rootless podman | `uidmap` in `Dockerfile` + `--privileged` in `runArgs` |
 | Push to GHCR from Codespaces | `"packages": "write"` |
+| Pinned tool versions | `mise` in `flake.nix` + entries in `mise.toml` |
+| Background processes | `nodejs_22` + `pm2` in `flake.nix` + an app in `ecosystem.config.js` |
+| A tunnel to the container | the above + `cloudflared`, and `TUNNEL_TOKEN` in `.env` |
+
+The optional files ship inert: every task that uses one is guarded on both the
+file and the binary, so a template with none of them enabled runs clean. Delete
+what you will never use.
 
 Ports are usually best left to `forwardPorts`, which VS Code forwards on demand.
 Use `runArgs` only for what it cannot forward, such as UDP.
 
 ## How the pieces fit
 
-**`flake.nix` is the single source of packages.** `env.nix` re-exports it
-through `flake-compat` so the Docker build can install the same closure without
-enabling experimental features, and `nix develop` uses it directly. One list,
-three consumers.
+**`flake.nix` is the single source of packages.** `env.nix` reads that same
+flake during the image build and takes nixpkgs from its pinned input, so the
+container and `nix develop` resolve identical versions. One list, two
+consumers, no second pin to keep in sync.
 
 **Lifecycle hooks map one-to-one onto tasks.** `"postCreateCommand": "task
 devcontainer:postCreate"` runs the task of that name, so the wiring is literal
