@@ -1,57 +1,122 @@
+// DevContainer + Nix Flake template.
+//
+// Everything optional is present but commented out, tagged OPTIONAL with what it
+// costs and what else must change to enable it. Uncomment what you need; delete
+// what you never will. This file is JSONC — comments are part of the format.
 {
-    "name": "Dev Environment",
+    "name": "devcontainer",
     "build": {
         "dockerfile": "Dockerfile",
+        // Build context is the repo root so the Dockerfile can COPY flake.nix/flake.lock.
         "context": ".."
     },
-    "remoteUser": "vscode",
     "runArgs": [
+        // Reap zombie processes; without this PID 1 leaks defunct children.
         "--init"
+        // OPTIONAL: rootless containers (podman/docker) inside this devcontainer.
+        // Also uncomment `uidmap` in the Dockerfile. --privileged disables most
+        // container isolation: the container can largely act as root on the host.
+        // Prefer the docker-in-docker feature below unless you specifically need it.
+        // , "--privileged"
+        //
+        // OPTIONAL: publish ports to the host. `forwardPorts` below is usually the
+        // better choice — VS Code forwards on demand and does not fail the container
+        // when the port is already taken. Use runArgs only for protocols VS Code does
+        // not forward, such as UDP.
+        // , "-p", "8000:8000/tcp"
+        // , "-p", "4433:4433/udp"
     ],
-    "hostRequirements": {
-        "cpus": 4
-    },
     "features": {
         "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": true,
+            "configureZshAsDefaultShell": true,
             "installOhMyZsh": true,
-            "upgradePackages": true,
-            "username": "vscode"
+            "upgradePackages": true
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {
+            "version": "latest"
         }
+        // OPTIONAL: sshd inside the container, listening on 2222 (not 22).
+        // Pair with the sshd hardening COPY in the Dockerfile. Publishing it beyond
+        // localhost — via a tunnel or `-p` — exposes a login surface: lock the
+        // accounts' passwords and use keys only.
+        // , "ghcr.io/devcontainers/features/sshd:1": { "version": "latest" }
+        //
+        // OPTIONAL: Docker inside the container. The safer alternative to --privileged.
+        // , "ghcr.io/devcontainers/features/docker-in-docker:2": { "version": "latest" }
     },
     "customizations": {
         "vscode": {
             "settings": {
-                "nix.formatterPath": "nixfmt",
-                "nix.enableLanguageServer": true,
-                "nix.serverPath": "nixd",
                 "terminal.integrated.defaultProfile.linux": "zsh",
+                // Send Alt as Meta so readline word-motions (Alt-B/Alt-F) work.
+                "terminal.integrated.sendAltAsMetaKey": true,
                 "editor.formatOnSave": true,
-                "github.copilot.chat.codeGeneration.useInstructionFiles": true
+                "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+                // VS Code keeps a verbatim copy of every save under
+                // ~/.vscode-server/data/User/History, including files git never sees.
+                // Without this exclusion a secret written to .env stays readable there
+                // indefinitely, long after the file itself is changed or deleted.
+                "workbench.localHistory.exclude": {
+                    "**/.env": true,
+                    "**/.env.*": true
+                }
+                // OPTIONAL: Rust. Pair with the rust-analyzer extension below.
+                // , "rust-analyzer.check.command": "clippy"
+                // , "rust-analyzer.cargo.features": "all"
             },
             "extensions": [
+                // Nix
                 "jnoortheen.nix-ide",
-                "redhat.vscode-yaml",
-                "github.copilot",
-                "mhutchie.git-graph",
-                "Gruntfuggly.todo-tree",
-                "mutantdino.resourcemonitor",
+                // Shell / editor basics
+                "mkhl.direnv",
+                "task.vscode-task",
+                "eamodio.gitlens",
                 "tamasfe.even-better-toml"
+                // OPTIONAL: language and tooling packs. Uncomment what the project uses;
+                // each one is an extension download on every container create.
+                //
+                // Rust — pair with the rust-analyzer settings above.
+                // , "rust-lang.rust-analyzer"
+                // , "vadimcn.vscode-lldb"
+                // , "fill-labs.dependi"
+                //
+                // Web / JS
+                // , "denoland.vscode-deno"
+                // , "bradlc.vscode-tailwindcss"
+                // , "Prisma.prisma"
+                //
+                // Infra
+                // , "github.vscode-github-actions"
+                // , "opentofu.vscode-opentofu"
             ]
         },
         "codespaces": {
             "repositories": {
-                "*": {
+                // Codespaces-only: extra repo scopes for the ambient GITHUB_TOKEN.
+                // Replace the placeholder with "owner/repo" entries this project must
+                // push to, or delete the block if it only ever touches its own repo.
+                "OWNER/REPO": {
                     "permissions": {
                         "contents": "write",
-                        "pull_requests": "write",
-                        "issues": "write",
                         "workflows": "write"
+                        // OPTIONAL: pushing images to GHCR.
+                        // , "packages": "write"
                     }
                 }
             }
         }
     },
-    "postCreateCommand": "task dev:setup",
-    "postStartCommand": "task dev:start"
+    // Ports VS Code forwards automatically when something listens on them.
+    // Safe to list ports nothing uses yet.
+    "forwardPorts": [],
+    // Lifecycle hooks. Each maps to a task of the same name in
+    // .devcontainer/Taskfile.yml, so the wiring is literal.
+    //
+    //   postCreate    — once, on first create. Full setup.
+    //   updateContent — on create and on rebuild/prebuild. Refresh the nix profile.
+    //   postStart     — every time the container starts, including resume.
+    "postCreateCommand": "task devcontainer:postCreate",
+    "updateContentCommand": "task devcontainer:updateContent",
+    "postStartCommand": "task devcontainer:postStart"
 }

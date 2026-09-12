@@ -1,35 +1,68 @@
-version: '3'
+version: "3"
+
+# .env is direnv's job in an interactive shell, but lifecycle hooks run
+# non-interactively: direnv exports on precmd, which `zsh -lic` never fires, so
+# a postStart hook would otherwise see none of these values. Loading it here
+# makes every task self-sufficient.
+# A missing .env is not an error; tasks that need a value guard for it.
+dotenv: [".env"]
+
+includes:
+  devcontainer:
+    taskfile: ./.devcontainer/Taskfile.yml
+    dir: ./.devcontainer
 
 tasks:
+  # ── Developer environment ───────────────────────────────────────────────────
+  # Generic lifecycle tasks: equally usable with or without a devcontainer.
   dev:setup:
-    desc: "Main setup hook (Runs on postCreate)"
-    cmds:
-      - task: dev:shell
-      - task: dev:git
+    desc: "Prepare the local development environment"
+    deps:
+      - task: git:setup
+      - task: shell:setup
 
   dev:start:
-    desc: "Startup hook (Runs on postStart)"
-    cmd: git submodule update --init --recursive
-
-  dev:shell:
-    desc: "Apply clean shell configuration"
+    desc: "Bring up local sources and background processes"
     cmds:
-      # 1. Copy our clean .zshrc to the user home
-      - cp .devcontainer/.zshrc ~/.zshrc
-      # 2. Trust the .envrc so direnv loads the flake environment immediately
-      - direnv allow .
+      - task: git:submodules:update
+      # OPTIONAL: start long-running processes here (pm2, docker compose, a
+      # dev server). Keep them idempotent — postStart runs on every resume.
 
-  dev:git:
-    desc: "Rewrite Git URLs to use Token (Codespaces Only)"
-    # Skip this task entirely if we are not in Codespaces
+  dev:clean:
+    desc: "Reclaim disk space from build artifacts and stale worktrees"
+    deps:
+      - git:worktrees:prune
+      # OPTIONAL: add language-specific cleanup, e.g. cargo:clean.
+
+  # ── Shell ───────────────────────────────────────────────────────────────────
+  shell:setup:
+    desc: "Trust the .envrc so direnv loads the flake environment"
+    # The .zshrc itself is applied by devcontainer:home:setup from
+    # .devcontainer/home/, so it survives a container rebuild.
+    cmd: direnv allow .
+
+  # ── Git ─────────────────────────────────────────────────────────────────────
+  git:setup:
+    desc: "Rewrite Git URLs to use the token (Codespaces only)"
+    # Codespaces has no SSH agent, so ssh:// remotes cannot authenticate there.
+    # `status` makes this a no-op everywhere else rather than a failure.
     status:
       - '[ "$CODESPACES" != "true" ]'
     vars:
-      # Construct the authenticated URL using the environment token
       AuthURL: "https://x-access-token:{{.GITHUB_TOKEN}}@github.com/"
     cmds:
-      - for: 
+      - for:
           - "ssh://git@github.com/"
           - "git@github.com/"
           - "git@github.com:"
         cmd: git config --global --add url.{{.AuthURL}}.insteadOf {{.ITEM}}
+
+  git:submodules:update:
+    desc: "Update Git submodules"
+    cmd: git submodule update --init --recursive
+
+  git:worktrees:prune:
+    desc: "Remove admin files for worktrees whose directory is gone"
+    # Safe by construction: `git worktree prune` only clears bookkeeping for
+    # worktrees already deleted from disk. It never touches an intact worktree.
+    cmd: git worktree prune -v

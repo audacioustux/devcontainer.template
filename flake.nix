@@ -41,15 +41,34 @@
 
           # Nix Tooling
           nixd
-          nixfmt-rfc-style
+          nixfmt
 
-          # Languages (uncomment as needed)
+          # ── Languages (uncomment as needed) ──────────────────────────────
+          # Prefer one toolchain source per language. If you use mise or rustup
+          # to manage versions, do NOT also list the language here — two installs
+          # on PATH is a debugging session nobody enjoys.
           # nodejs_22
           # bun
-          # python311
-          # rustc
-          # cargo
+          # deno
+          # python313
+          # uv
           # go
+          # rustup          # version-managed; pairs with rust-toolchain.toml
+          # cargo-nextest
+
+          # ── Infra / container tooling (uncomment as needed) ───────────────
+          # podman
+          # docker-client
+          # kubectl
+          # k9s
+          # opentofu
+          # awscli2
+          # cloudflared
+          # postgresql
+          # redis
+
+          # ── Version management ───────────────────────────────────────────
+          # mise            # per-project tool versions from mise.toml
 
           # Utilities
           curl
@@ -57,6 +76,10 @@
           tree
           moreutils
           pre-commit
+          rsync # required by devcontainer:home:setup
+
+          # Fun: prints a banner on `nix develop`. Drop these two together with
+          # the shellHook below if you would rather have a silent shell.
           figlet
           lolcat
         ];

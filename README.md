@@ -1,76 +1,95 @@
 # DevContainer + Nix Flake Template
 
-A template repository for development environments using **DevContainers** with **Nix Flakes**.
+A development environment that is reproducible (**Nix flakes**), portable
+(**DevContainers**), and works the same locally, in a container, and in
+**GitHub Codespaces**.
 
-## Features
+Everything optional ships commented out and tagged `OPTIONAL`, with a note on
+what it costs and what else must change to enable it. Turn on what you need;
+delete what you never will.
 
-- 🐳 **DevContainer** - Consistent development environment across machines
-- ❄️ **Nix Flakes** - Reproducible package management
-- 🚀 **GitHub Codespaces** - Ready for cloud development
-- 🔧 **VS Code Integration** - Pre-configured extensions and settings
-- 📦 **direnv** - Automatic environment loading
+## Quick start
 
-## Quick Start
+1. Click **Use this template**, then clone your repository.
+2. Open in VS Code and choose **Reopen in Container**
+   (or **Code → Codespaces → Create codespace**).
+3. Edit `flake.nix` to add the packages your project needs, then
+   **Rebuild Container**.
 
-### Use as Template
+Without a container, if you have Nix locally:
 
-1. Click "Use this template" on GitHub
-2. Clone your new repository
-3. Open in VS Code with Dev Containers extension
-4. Click "Reopen in Container"
-
-### GitHub Codespaces
-
-Click "Code" → "Codespaces" → "Create codespace on main"
-
-## Customization
-
-### Add Packages
-
-Edit `flake.nix` and add packages to the `devPackages` list:
-
-```nix
-devPackages = with pkgs; [
-  # Your packages here
-  nodejs_22
-  python311
-  rustc
-];
+```bash
+nix develop        # or: direnv allow
 ```
 
-Then rebuild the container.
-
-### VS Code Extensions
-
-Edit `.devcontainer/devcontainer.json` under `customizations.vscode.extensions`.
-
-## Structure
+## Layout
 
 ```
 .
 ├── .devcontainer/
-│   ├── Dockerfile       # Container build with Nix
-│   ├── devcontainer.json # VS Code/Codespaces config
-│   ├── env.nix          # Flake-compat bridge
-│   └── .zshrc           # Shell configuration
-├── flake.nix            # Nix package definitions
-├── flake.lock           # Locked dependencies
-├── Taskfile.yml         # Dev task automation
-├── .envrc               # direnv configuration
+│   ├── Dockerfile          # Image build: Nix, then the flake environment
+│   ├── devcontainer.json   # Features, VS Code settings, lifecycle hooks
+│   ├── env.nix             # flake-compat bridge used during the build
+│   ├── Taskfile.yml        # Lifecycle hook implementations
+│   ├── home/               # Files copied into $HOME on every create
+│   └── sshd/               # OPTIONAL sshd hardening
+├── flake.nix               # Package list (the file you edit most)
+├── Taskfile.yml            # Generic dev tasks, usable without a container
+├── .envrc                  # direnv: loads the flake environment
 └── .gitignore
 ```
 
-## Local Development (without container)
+## Turning things on
 
-If you have Nix installed locally:
+| Want | Uncomment |
+|---|---|
+| A language or tool | its line in `flake.nix` → Rebuild Container |
+| A VS Code extension | its line in `devcontainer.json` → `extensions` |
+| SSH into the container | `sshd` feature + the `COPY` in `Dockerfile` |
+| Docker inside the container | `docker-in-docker` feature |
+| Rootless podman | `uidmap` in `Dockerfile` + `--privileged` in `runArgs` |
+| Push to GHCR from Codespaces | `"packages": "write"` |
 
-```bash
-# Enter development shell
-nix develop
+Ports are usually best left to `forwardPorts`, which VS Code forwards on demand.
+Use `runArgs` only for what it cannot forward, such as UDP.
 
-# Or with direnv (automatic)
-direnv allow
-```
+## How the pieces fit
+
+**`flake.nix` is the single source of packages.** `env.nix` re-exports it
+through `flake-compat` so the Docker build can install the same closure without
+enabling experimental features, and `nix develop` uses it directly. One list,
+three consumers.
+
+**Lifecycle hooks map one-to-one onto tasks.** `"postCreateCommand": "task
+devcontainer:postCreate"` runs the task of that name, so the wiring is literal
+rather than something you have to trace:
+
+| Hook | When | Does |
+|---|---|---|
+| `postCreate` | once, on create | project setup + `$HOME` files |
+| `updateContent` | create, rebuild, prebuild | rebuild the Nix profile |
+| `postStart` | every start, including resume | submodules, background processes |
+
+Generic work lives in the root `Taskfile.yml` as `dev:*` and runs fine outside a
+container; only container-specific steps live in `.devcontainer/Taskfile.yml`.
+
+**`$HOME` does not survive a rebuild.** Only `/workspaces` and a few VS Code
+paths are mounted. Anything that must outlive a rebuild belongs in
+`.devcontainer/home/`, which `postCreate` copies back — see the README there,
+especially before putting anything private in it.
+
+## Two things worth knowing
+
+**Nix profile refresh.** The image bakes a profile entry named `devcontainer`
+with no source URL, so `nix profile upgrade` cannot refresh it.
+`updateContent` removes and reinstalls it instead, building first so a broken
+flake fails before the old profile is gone. If you change the `nix profile
+install` line in the `Dockerfile`, change it there too.
+
+**Reclaiming disk.** Each profile generation pins a store closure as a GC root,
+so switching flake revisions leaves orphaned closures that are not collected
+automatically. `task devcontainer:clean` wipes profile history and runs
+`nix store gc`.
 
 ## License
 

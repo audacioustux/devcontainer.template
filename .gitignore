@@ -1,11 +1,22 @@
 # Nix
 result/
+result-*
 .direnv/
 
 # Environment
 .env
 .env.local
 .env.*.local
+
+# Private keys — backstop for .devcontainer/home/.ssh/.
+# Public keys and authorized_keys are intentionally still tracked.
+*.pem
+*.key
+id_rsa
+id_ecdsa
+id_ed25519
+.devcontainer/home/.ssh/id_*
+!*.pub
 
 # Editor
 .vscode/.history/
@@ -17,7 +28,7 @@ result/
 .DS_Store
 Thumbs.db
 
-# Dependencies
+# Dependencies / build output
 node_modules/
 __pycache__/
 *.pyc
