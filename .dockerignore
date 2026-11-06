@@ -1,0 +1,12 @@
+# The image build reads only these files (see the COPY lines in
+# .devcontainer/Dockerfile), so the build context is an allowlist. The context is
+# the repo root; without this, .git, .env and every build artefact are sent to
+# the builder on each build. Add a line here when the Dockerfile COPYs more.
+*
+!flake.nix
+!flake.lock
+!.devcontainer/env.nix
+
+# OPTIONAL: uncomment with the sshd COPY in the Dockerfile. Without it that COPY
+# fails, because the file is not in the context.
+# !.devcontainer/sshd/10-devbox.conf
