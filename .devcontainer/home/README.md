@@ -6,7 +6,7 @@ destroyed on every rebuild.** Anything that must outlive a rebuild belongs here
 and is re-applied by `task devcontainer:home:setup`.
 
 Contents are copied with `rsync` preserving this layout, so `home/.config/foo`
-lands at `~/.config/foo`.
+lands at `~/.config/foo`. This README is the one file that is not copied.
 
 ## What belongs here
 

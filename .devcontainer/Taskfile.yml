@@ -11,6 +11,14 @@ version: "3"
 # are relative to this directory. Root tasks reached via the `:` prefix still run
 # from the repo root.
 tasks:
+  # Refuses to run outside the container. These tasks write $HOME or the user's
+  # Nix profile, which on a host is your own. devcontainer.json sets DEVCONTAINER.
+  guard:
+    internal: true
+    preconditions:
+      - sh: test "${DEVCONTAINER:-}" = true
+        msg: "this task runs only inside the devcontainer (DEVCONTAINER is not true)"
+
   postCreate:
     desc: "Create-time hook: project setup plus container home-directory config"
     deps:
@@ -28,6 +36,7 @@ tasks:
     # `nix profile install` conflicts with that entry, and it carries no source
     # URL for `nix profile upgrade`, so replace it. Build first so a broken
     # flake fails before the profile is removed.
+    deps: [guard]
     cmds:
       - nix-build env.nix --impure --no-out-link
       - nix profile remove devcontainer || true
@@ -45,13 +54,20 @@ tasks:
     # Lives here rather than in the root Taskfile because a non-container
     # checkout has no store to collect.
     deps:
+      - guard
       - :dev:clean
     cmds:
       - nix profile wipe-history
       - nix store gc
 
+  lint:
+    desc: "Lint the devcontainer image definition"
+    cmd: hadolint Dockerfile
+
   home:setup:
     desc: "Apply the container's home-directory files to $HOME"
+    # On a host this would overwrite the host's dotfiles.
+    deps: [guard]
     # $HOME is container rootfs, not a mount (only /workspaces and /vscode are),
     # so it is destroyed on every rebuild. Anything that must survive a rebuild
     # belongs in .devcontainer/home/ and is re-applied here.
@@ -65,5 +81,8 @@ tasks:
     # remote access into the container. NEVER commit private keys here.
     cmds:
       - '[ -d home/.ssh ] && rsync -a --chmod=D700,F600 home/.ssh/ ~/.ssh/ || true'
-      - rsync -a --exclude .ssh home/ ~/
+      # `-rlt`, not `-a`: with `-a`, rsync also copies the mode of home/ onto
+      # $HOME itself, and a group-writable $HOME makes sshd StrictModes refuse
+      # every key. Checkout modes follow the umask, so that happens by default.
+      - rsync -rlt --exclude .ssh --exclude=/README.md home/ ~/
       - direnv allow ..

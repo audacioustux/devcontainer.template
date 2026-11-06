@@ -10,6 +10,13 @@
         // Build context is the repo root so the Dockerfile can COPY flake.nix/flake.lock.
         "context": ".."
     },
+    "remoteUser": "vscode",
+    // Lets tasks tell the container from a host. The tasks that write $HOME or
+    // the Nix profile (see `guard` in .devcontainer/Taskfile.yml) refuse to run
+    // without it, because on a host they would change your own.
+    "containerEnv": {
+        "DEVCONTAINER": "true"
+    },
     "runArgs": [
         // Reap zombie processes; without this PID 1 leaks defunct children.
         "--init"
@@ -31,13 +38,15 @@
             "installZsh": true,
             "configureZshAsDefaultShell": true,
             "installOhMyZsh": true,
-            "upgradePackages": true
+            "upgradePackages": true,
+            "username": "vscode"
         },
         "ghcr.io/devcontainers/features/github-cli:1": {
             "version": "latest"
         }
         // OPTIONAL: sshd inside the container, listening on 2222 (not 22).
-        // Pair with the sshd hardening COPY in the Dockerfile. Publishing it beyond
+        // Pair with the sshd hardening COPY in the Dockerfile and its .dockerignore
+        // line. Publishing it beyond
         // localhost — via a tunnel or `-p` — exposes a login surface: lock the
         // accounts' passwords and use keys only.
         // , "ghcr.io/devcontainers/features/sshd:1": { "version": "latest" }
@@ -48,6 +57,10 @@
     "customizations": {
         "vscode": {
             "settings": {
+                // Match the flake: nixd for language features, nixfmt for formatting.
+                "nix.enableLanguageServer": true,
+                "nix.serverPath": "nixd",
+                "nix.formatterPath": "nixfmt",
                 "terminal.integrated.defaultProfile.linux": "zsh",
                 // Send Alt as Meta so readline word-motions (Alt-B/Alt-F) work.
                 "terminal.integrated.sendAltAsMetaKey": true,
@@ -57,9 +70,15 @@
                 // ~/.vscode-server/data/User/History, including files git never sees.
                 // Without this exclusion a secret written to .env stays readable there
                 // indefinitely, long after the file itself is changed or deleted.
+                // VS Code cannot read .gitignore, so this list mirrors its secret rules.
                 "workbench.localHistory.exclude": {
                     "**/.env": true,
-                    "**/.env.*": true
+                    "**/.env.*": true,
+                    "**/*.key": true,
+                    "**/*.pem": true,
+                    "**/id_rsa": true,
+                    "**/id_ecdsa": true,
+                    "**/id_ed25519": true
                 }
                 // OPTIONAL: Rust. Pair with the rust-analyzer extension below.
                 // , "rust-analyzer.check.command": "clippy"
