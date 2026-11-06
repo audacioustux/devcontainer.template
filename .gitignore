@@ -1,12 +1,14 @@
 # Nix
-result/
-result-*
+/result
+/result-*
 .direnv/
+# Written on shell entry by git-hooks.nix; it links into the Nix store.
+.pre-commit-config.yaml
 
 # Environment
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Private keys — backstop for .devcontainer/home/.ssh/.
 # Public keys and authorized_keys are intentionally still tracked.
@@ -17,6 +19,9 @@ id_ecdsa
 id_ed25519
 .devcontainer/home/.ssh/id_*
 !*.pub
+
+# Local artifacts
+.worktrees/
 
 # Editor
 .vscode/.history/

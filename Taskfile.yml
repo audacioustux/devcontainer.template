@@ -34,6 +34,15 @@ tasks:
       - git:worktrees:prune
       # OPTIONAL: add language-specific cleanup, e.g. cargo:clean.
 
+  # ── Checks ──────────────────────────────────────────────────────────────────
+  # The formatters are the git hooks in flake.nix; `nix flake check` runs them
+  # over git-tracked files, so `git add` a new file before the gate sees it.
+  lint:
+    desc: "Lint the Dockerfile, then run the flake checks (formatters)"
+    cmds:
+      - task: devcontainer:lint
+      - nix flake check
+
   # ── Tool versions (OPTIONAL) ────────────────────────────────────────────────
   mise:setup:
     desc: "Install mise-managed tools"
