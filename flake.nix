@@ -32,21 +32,15 @@
           };
 
           # --- Git hooks ---
-          # Run at pre-push rather than pre-commit, so a commit stays instant and the
-          # gate still holds before anything leaves the machine. Add hooks to the set
-          # below; the dev shell installs them on entry. The installer owns
-          # .git/hooks: it clears core.hooksPath, so drop this block before adopting
-          # husky or lefthook.
-          stage = "pre-push";
+          # Installed when the dev shell is entered, and run by `nix flake check`.
+          # Add hooks to the set below. Keep the default stage: with
+          # `default_stages = [ "pre-push" ]` the stock check runs no hook and
+          # always passes. The installer owns .git/hooks and clears
+          # core.hooksPath, so drop this block before adopting husky or lefthook.
           gitHooks = git-hooks.lib.${system}.run {
             src = ./.;
-            default_stages = [ stage ];
-            hooks = {
-              nixfmt.enable = true;
-            };
+            hooks.nixfmt.enable = true;
           };
-
-          enabledHooks = builtins.filter (hook: hook.enable) (builtins.attrValues gitHooks.config.hooks);
 
           # --- Package List ---
           # Customize this list for your project
@@ -122,25 +116,8 @@
           ];
         in
         {
-          # Not `checks.git-hooks = gitHooks`: that check runs the pre-commit stage,
-          # so with every hook on pre-push it runs nothing and always passes. This one
-          # names the stage. It reads git-tracked files only, so `git add` a new file
-          # before expecting the check to see it.
-          checks.hooks =
-            assert pkgs.lib.assertMsg (enabledHooks != [ ]) "no git hook is enabled";
-            assert pkgs.lib.assertMsg (builtins.all (
-              hook: builtins.elem stage hook.stages
-            ) enabledHooks) "an enabled git hook does not run at ${stage}";
-            pkgs.runCommand "hooks-check" { nativeBuildInputs = [ pkgs.git ]; } ''
-              export HOME=$TMPDIR
-              cp -r --no-preserve=mode ${./.} repo
-              cd repo
-              git init -q
-              git add -A -f
-              ${gitHooks.config.package}/bin/pre-commit run --all-files --hook-stage ${stage} \
-                --config ${gitHooks.config.configFile} --show-diff-on-failure
-              touch $out
-            '';
+          # Reads git-tracked files only: `git add` a new file before the check sees it.
+          checks.git-hooks = gitHooks;
 
           # Development Shell (nix develop)
           devShells.default = pkgs.mkShell {

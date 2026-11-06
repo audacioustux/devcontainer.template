@@ -96,9 +96,8 @@ especially before putting anything private in it.
 
 `task lint` runs hadolint on the Dockerfile, then `nix flake check`. The flake
 check runs the git hooks in `flake.nix` (nixfmt to start with) over the tracked
-files, at the same stage the installed hook uses. Entering the dev shell
-installs the hooks at **pre-push**, so a commit stays instant and nothing
-unformatted leaves the machine. Add a hook to the `hooks` set in `flake.nix`.
+files. Entering the dev shell installs the same hooks, so nothing unformatted
+gets committed. Add a hook to the `hooks` set in `flake.nix`.
 
 The flake supports `x86_64-linux`, `aarch64-linux` and `aarch64-darwin`, the
 systems git-hooks.nix supports. Intel Macs would need the hooks removed.
