@@ -27,7 +27,7 @@ nix develop        # or: direnv allow
 ```
 .
 ├── .devcontainer/
-│   ├── Dockerfile          # Image build: Nix, then the flake environment
+│   ├── Dockerfile          # Image build: pinned Nix, then the flake environment
 │   ├── devcontainer.json   # Features, VS Code settings, lifecycle hooks
 │   ├── env.nix             # Bridges flake.nix into the image build
 │   ├── Taskfile.yml        # Lifecycle hook implementations
@@ -40,6 +40,8 @@ nix develop        # or: direnv allow
 ├── mise.toml               # OPTIONAL per-project tool versions
 ├── .env.example            # Copy to .env; loaded by the root Taskfile
 ├── .envrc                  # direnv: loads the flake environment
+├── .dockerignore           # Image build context: an allowlist
+├── .editorconfig
 └── .gitignore
 ```
 
@@ -49,9 +51,10 @@ nix develop        # or: direnv allow
 |---|---|
 | A language or tool | its line in `flake.nix` → Rebuild Container |
 | A VS Code extension | its line in `devcontainer.json` → `extensions` |
-| SSH into the container | `sshd` feature + the `COPY` in `Dockerfile` |
+| SSH into the container | `sshd` feature (+ hardening, below) |
 | Docker inside the container | `docker-in-docker` feature |
 | Rootless podman | `uidmap` in `Dockerfile` + `--privileged` in `runArgs` |
+| SSH hardening | the `COPY` in `Dockerfile` + its line in `.dockerignore` |
 | Push to GHCR from Codespaces | `"packages": "write"` |
 | Pinned tool versions | `mise` in `flake.nix` + entries in `mise.toml` |
 | Background processes | `nodejs_22` + `pm2` in `flake.nix` + an app in `ecosystem.config.js` |
@@ -88,6 +91,23 @@ container; only container-specific steps live in `.devcontainer/Taskfile.yml`.
 paths are mounted. Anything that must outlive a rebuild belongs in
 `.devcontainer/home/`, which `postCreate` copies back — see the README there,
 especially before putting anything private in it.
+
+## Checks
+
+`task lint` runs hadolint on the Dockerfile, then `nix flake check`. The flake
+check runs the git hooks in `flake.nix` (nixfmt to start with) over the tracked
+files, at the same stage the installed hook uses. Entering the dev shell
+installs the hooks at **pre-push**, so a commit stays instant and nothing
+unformatted leaves the machine. Add a hook to the `hooks` set in `flake.nix`.
+
+The flake supports `x86_64-linux`, `aarch64-linux` and `aarch64-darwin`, the
+systems git-hooks.nix supports. Intel Macs would need the hooks removed.
+
+## Pinned inputs
+
+The `Dockerfile` pins the base image by digest and the Nix installer by version
+and SHA-256, and fails the build if the installer does not match. The comment at
+the top of the file says how to upgrade each.
 
 ## Two things worth knowing
 
